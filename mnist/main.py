@@ -50,28 +50,53 @@ test_loader = torch.utils.data.DataLoader(
 
 
 class Net(nn.Module):
+    CONV1_IN = 1
+    CONV2_OUT = 10
+    MAGIC_N = 16
+    KERNEL_SIZE = 2
+
     def __init__(self):
+        """
+        fc1:
+            input 23 * 16, out 51
+        fc2:
+            input 51, out 10 (ten digits)
+        """
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+
+        self.conv1_in = self.CONV1_IN
+        self.conv1_out = 13
+        self.conv2_out = 23
+        self.fc1_in = self.conv2_out * self.MAGIC_N
+        self.fc1_out = 51
+        self.fc2_out = self.CONV2_OUT
+
+        self.conv1 = nn.Conv2d(self.conv1_in, self.conv1_out, kernel_size=5)
+        self.conv2 = nn.Conv2d(self.conv1_out, self.conv2_out, kernel_size=5)
         self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
+        self.fc1 = nn.Linear(self.fc1_in, self.fc1_out)
+        self.fc2 = nn.Linear(self.fc1_out, self.fc2_out)
 
     def forward(self, x):
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-        x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
-        x = F.dropout(x, training=self.training)
-        x = self.fc2(x)
-        return F.log_softmax(x)
+        """
+        x size: 25x1x28x28 = batch_size x 1 x 28 x 28
+        """
+        x = self.conv1(x) # batch_size x conv1_out x 24 x 24
+        x = F.relu(F.max_pool2d(x, self.KERNEL_SIZE)) # batch_size x conv1_out x 12 x 12
+        x = self.conv2(x) # batch_size x conv1_out x 8 x 8
+        x = F.relu(F.max_pool2d(self.conv2_drop(x), self.KERNEL_SIZE)) # batch_size x conv2_out x 4 x 4
+        x = x.view(-1, self.fc1_in) # batch_size x fc1_in
+        x = F.relu(self.fc1(x)) # batch_size x fc1_out
+        x = self.fc2(F.dropout(x, training=self.training)) # batch_size x fc2_out
+        y = F.log_softmax(x) # same
+        return y
 
 model = Net()
 if args.cuda:
     model.cuda()
 
 optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+
 
 def train(epoch):
     model.train()
@@ -84,10 +109,11 @@ def train(epoch):
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
-        if batch_idx % args.log_interval == 0:
+        if batch_idx % args.log_interval == 0: # batch size is 32, print every 100th batch
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.data[0]))
+
 
 def test(epoch):
     model.eval()

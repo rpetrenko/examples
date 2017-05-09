@@ -1,6 +1,6 @@
 from __future__ import print_function
 import torch
-import torch.nn as nn 
+import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
 import numpy as np
@@ -61,11 +61,11 @@ if __name__ == '__main__':
         optimizer.step(closure)
         # begin to predict
         future = 1000
-        pred = seq(input[:3], future = future)
+        pred = seq(input[:3], future=future)
         y = pred.data.numpy()
         # draw the result
         plt.figure(figsize=(30,10))
-        plt.title('Predict future values for time sequences\n(Dashlines are predicted values)', fontsize=30) 
+        plt.title('Predict future values for time sequences\n(Dashlines are predicted values)', fontsize=30)
         plt.xlabel('x', fontsize=20)
         plt.ylabel('y', fontsize=20)
         plt.xticks(fontsize=20)

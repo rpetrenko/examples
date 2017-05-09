@@ -1,4 +1,5 @@
 dcgan/data
+.idea
 data
 *.pyc
 OpenNMT/data
